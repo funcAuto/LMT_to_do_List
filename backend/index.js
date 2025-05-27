@@ -78,3 +78,7 @@ app.delete('/todos/:id', async (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
 });
+// check where the backend is working 
+app.get('/', (req, res) => {
+  res.send('Hello My dear Friend LMT TO do list is ready, Kindly proceed with frontend.')
+})
