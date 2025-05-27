@@ -62,7 +62,6 @@ const TodoList = () => {
   const [editedTask, setEditedTask] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
 
-  // Persist theme to localStorage for demo
   useEffect(() => {
     const saved = localStorage.getItem('todo-theme');
     if (saved) setMode(saved);
@@ -82,7 +81,7 @@ const TodoList = () => {
   const fetchTodos = () => {
     setLoading(true);
     axios
-      .get('http://192.168.0.115:5000/todos')
+      .get('http://192.168.0.160:5000/todos')
       .then((res) => setTodos(res.data))
       .catch(() => setError('Failed to fetch todos'))
       .finally(() => setLoading(false));
@@ -92,7 +91,7 @@ const TodoList = () => {
     if (!task.trim()) return;
     setLoading(true);
     axios
-      .post('http://192.168.0.115:5000/todos', { task, status: 'pending' })
+      .post('http://192.168.0.160:5000/todos', { task, status: 'pending' })
       .then((res) => {
         setTodos((prev) => [...prev, res.data]);
         setTask('');
@@ -105,7 +104,7 @@ const TodoList = () => {
   const updateStatus = (id, status) => {
     setLoading(true);
     axios
-      .put(`http://192.168.0.115:5000/todos/${id}`, { status })
+      .put(`http://192.168.0.160:5000/todos/${id}`, { status })
       .then((res) => {
         setTodos((prev) => prev.map((todo) => (todo._id === id ? res.data : todo)));
         setSuccess('Task status updated!');
@@ -123,7 +122,7 @@ const TodoList = () => {
     if (!editedTask.trim()) return;
     setLoading(true);
     axios
-      .put(`http://192.168.0.115:5000/todos/${id}`, { task: editedTask })
+      .put(`http://192.168.0.160:5000/todos/${id}`, { task: editedTask })
       .then((res) => {
         setTodos((prev) => prev.map((todo) => (todo._id === id ? res.data : todo)));
         setEditing(null);
@@ -141,7 +140,7 @@ const TodoList = () => {
   const deleteTodo = (id) => {
     setLoading(true);
     axios
-      .delete(`http://192.168.0.115:5000/todos/${id}`)
+      .delete(`http://192.168.0.160:5000/todos/${id}`)
       .then(() => {
         setTodos((prev) => prev.filter((todo) => todo._id !== id));
         setSuccess('Task deleted successfully!');
@@ -150,6 +149,19 @@ const TodoList = () => {
       .catch(() => setError('Failed to delete task'))
       .finally(() => setLoading(false));
   };
+
+  // Calculate summary counts
+  const getStatusSummary = () => {
+    const summary = { pending: 0, in_progress: 0, completed: 0 };
+    todos.forEach(todo => {
+      if (summary[todo.status] !== undefined) {
+        summary[todo.status]++;
+      }
+    });
+    return summary;
+  };
+
+  const summary = getStatusSummary();
 
   return (
     <Box
@@ -217,6 +229,26 @@ const TodoList = () => {
           </Grid>
         </Grid>
 
+        {/* Summary */}
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-around',
+            mb: 3,
+          }}
+          aria-label="To-do status summary"
+        >
+          {statusOptions.map(({ value, label, color, Icon }) => (
+            <Box
+              key={value}
+              sx={{ display: 'flex', alignItems: 'center', gap: 1, color, fontWeight: 600 }}
+            >
+              <Icon size={20} />
+              <span>{label}: {summary[value]}</span>
+            </Box>
+          ))}
+        </Box>
+
         {/* Add Task */}
         <Grid container spacing={2} alignItems="center" mb={4}>
           <Grid item xs={12} sm={9}>
@@ -277,157 +309,130 @@ const TodoList = () => {
             variant="subtitle1"
             color="textSecondary"
             align="center"
-            sx={{ mt: 6, fontStyle: 'italic', color: isDark ? '#aaa' : '#777' }}
+            sx={{ userSelect: 'none' }}
           >
-            No tasks yet — get started by adding one above!
+            No tasks yet. Add a task to get started!
           </Typography>
         )}
 
         {/* Todo List */}
-        <List disablePadding>
+        <List>
           <AnimatePresence>
-            {todos.map((todo) => {
-              const status = statusOptions.find((s) => s.value === (todo.status || 'pending')) || statusOptions[0];
-              const isEditing = editing === todo._id;
+            {todos.map(({ _id, task, status }) => {
+              const statusInfo = statusOptions.find((s) => s.value === status);
+              const isEditingThis = editing === _id;
 
               return (
                 <motion.div
-                  key={todo._id}
+                  key={_id}
+                  layout
                   initial="hidden"
                   animate="visible"
                   exit="exit"
                   variants={fadeSlideVariants}
-                  transition={{ duration: 0.3 }}
+                  style={{ marginBottom: 12 }}
                 >
                   <ListItem
                     sx={{
-                      bgcolor: isDark ? '#2a2a2a' : '#fefefe',
-                      color: isDark ? '#eee' : '#111',
-                      mb: 2,
-                      borderRadius: 3,
-                      boxShadow: isDark
-                        ? '0 3px 8px rgba(255 255 255 / 0.05)'
-                        : '0 3px 8px rgba(0 0 0 / 0.08)',
-                      display: 'flex',
-                      alignItems: 'center',
+                      bgcolor: isDark ? '#333' : '#fafafa',
+                      borderRadius: 2,
+                      px: 2,
                       py: 1.5,
-                      px: 3,
-                      transition: 'background-color 0.3s ease',
-                      '&:hover': {
-                        boxShadow: isDark
-                          ? '0 6px 16px rgba(255 255 255 / 0.1)'
-                          : '0 6px 20px rgba(0 0 0 / 0.12)',
-                      },
+                      boxShadow: isDark
+                        ? '0 1px 3px rgba(255 255 255 / 0.1)'
+                        : '0 1px 3px rgba(0 0 0 / 0.1)',
+                      userSelect: 'none',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: 1,
+                      flexWrap: 'wrap',
                     }}
                   >
-                    {/* Status selector */}
-                    <FormControl
-                      size="small"
-                      sx={{ minWidth: 140, mr: 3 }}
-                      aria-label={`Change status for task "${todo.task}"`}
-                    >
-                      <InputLabel id={`status-label-${todo._id}`}>Status</InputLabel>
-                      <Select
-                        labelId={`status-label-${todo._id}`}
-                        value={status.value}
-                        label="Status"
-                        onChange={(e) => updateStatus(todo._id, e.target.value)}
+                    {/* Task text or edit input */}
+                    {isEditingThis ? (
+                      <TextField
+                        value={editedTask}
+                        onChange={(e) => setEditedTask(e.target.value)}
+                        size="small"
+                        autoFocus
                         disabled={loading}
                         sx={{
-                          bgcolor: isDark ? '#1c1c1c' : '#fafafa',
-                          color: isDark ? '#eee' : 'inherit',
-                          '& .MuiSvgIcon-root': {
-                            color: status.color,
-                          },
-                          '& .MuiSelect-select': {
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 1,
-                          },
+                          flex: 1,
+                          mr: 1,
+                          input: { color: isDark ? '#eee' : '#111' },
+                          bgcolor: isDark ? '#2a2a2a' : 'transparent',
                         }}
-                        renderValue={(selected) => {
-                          const selectedStatus = statusOptions.find((s) => s.value === selected);
-                          return (
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <selectedStatus.Icon size={18} color={selectedStatus.color} />
-                              <Typography sx={{ fontWeight: 600 }}>{selectedStatus.label}</Typography>
-                            </Box>
-                          );
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && editedTask.trim()) saveEditedTodo(_id);
+                          if (e.key === 'Escape') setEditing(null);
                         }}
+                        aria-label={`Edit task ${task}`}
+                      />
+                    ) : (
+                      <Typography
+                        sx={{
+                          flex: 1,
+                          color: statusInfo.color,
+                          textDecoration: status === 'completed' ? 'line-through' : 'none',
+                          fontWeight: 600,
+                          wordBreak: 'break-word',
+                          userSelect: 'text',
+                        }}
+                        aria-label={`Task: ${task} - Status: ${statusInfo.label}`}
                       >
-                        {statusOptions.map(({ value, label, color, Icon }) => (
-                          <MenuItem key={value} value={value}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <Icon size={18} color={color} />
-                              {label}
-                            </Box>
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+                        {task}
+                      </Typography>
+                    )}
 
-                    {/* Task text or edit input */}
-                    <Box
-                      sx={{
-                        flexGrow: 1,
-                        mr: 3,
-                        overflowWrap: 'break-word',
-                        wordBreak: 'break-word',
-                      }}
-                    >
-                      {isEditing ? (
-                        <TextField
-                          variant="outlined"
-                          size="small"
-                          fullWidth
-                          value={editedTask}
-                          onChange={(e) => setEditedTask(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && editedTask.trim()) saveEditedTodo(todo._id);
-                            if (e.key === 'Escape') {
-                              setEditing(null);
-                              setEditedTask('');
-                            }
-                          }}
-                          autoFocus
-                          aria-label={`Edit task ${todo.task}`}
-                          disabled={loading}
+                    {/* Status selector */}
+                    {!isEditingThis && (
+                      <FormControl
+                        size="small"
+                        sx={{ minWidth: 140 }}
+                        disabled={loading}
+                        aria-label="Change task status"
+                      >
+                        <Select
+                          value={status}
+                          onChange={(e) => updateStatus(_id, e.target.value)}
                           sx={{
-                            bgcolor: isDark ? '#1c1c1c' : '#fafafa',
-                            input: { color: isDark ? '#eee' : 'inherit' },
-                          }}
-                        />
-                      ) : (
-                        <Typography
-                          sx={{
+                            color: statusInfo.color,
                             fontWeight: 600,
-                            color: status.value === 'completed' ? 'text.disabled' : 'inherit',
-                            textDecoration: status.value === 'completed' ? 'line-through' : 'none',
-                            userSelect: 'text',
-                            whiteSpace: 'pre-wrap',
+                            '& .MuiSelect-icon': { color: statusInfo.color },
+                            '& .MuiOutlinedInput-notchedOutline': { borderColor: statusInfo.color },
+                            bgcolor: isDark ? '#222' : 'transparent',
                           }}
-                          aria-label={`Task: ${todo.task}`}
+                          MenuProps={{
+                            PaperProps: {
+                              sx: { bgcolor: isDark ? '#333' : '#fff', color: isDark ? '#eee' : '#111' },
+                            },
+                          }}
+                          aria-label="Select status"
                         >
-                          {todo.task}
-                        </Typography>
-                      )}
-                    </Box>
+                          {statusOptions.map(({ value, label, color }) => (
+                            <MenuItem
+                              key={value}
+                              value={value}
+                              sx={{ color }}
+                            >
+                              {label}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    )}
 
                     {/* Action buttons */}
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        gap: 1,
-                      }}
-                    >
-                      {isEditing ? (
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      {isEditingThis ? (
                         <>
                           <Tooltip title="Save">
                             <Button
                               variant="contained"
-                              color="success"
                               size="small"
-                              onClick={() => saveEditedTodo(todo._id)}
+                              color="primary"
+                              onClick={() => saveEditedTodo(_id)}
                               disabled={loading || !editedTask.trim()}
                               aria-label="Save edited task"
                             >
@@ -438,11 +443,10 @@ const TodoList = () => {
                             <Button
                               variant="outlined"
                               size="small"
-                              onClick={() => {
-                                setEditing(null);
-                                setEditedTask('');
-                              }}
-                              aria-label="Cancel editing"
+                              color="secondary"
+                              onClick={() => setEditing(null)}
+                              disabled={loading}
+                              aria-label="Cancel editing task"
                             >
                               Cancel
                             </Button>
@@ -450,26 +454,22 @@ const TodoList = () => {
                         </>
                       ) : (
                         <>
-                          <Tooltip title="Edit task">
+                          <Tooltip title="Edit">
                             <IconButton
-                              onClick={() => editTodo(todo._id, todo.task)}
-                              size="small"
-                              aria-label={`Edit task: ${todo.task}`}
+                              onClick={() => editTodo(_id, task)}
                               disabled={loading}
+                              aria-label="Edit task"
                             >
-                              <BsFillPencilFill size={18} />
+                              <BsFillPencilFill color={isDark ? '#90caf9' : '#1976d2'} size={18} />
                             </IconButton>
                           </Tooltip>
-
-                          <Tooltip title="Delete task">
+                          <Tooltip title="Delete">
                             <IconButton
-                              onClick={() => confirmDelete(todo._id)}
-                              size="small"
-                              color="error"
-                              aria-label={`Delete task: ${todo.task}`}
+                              onClick={() => confirmDelete(_id)}
                               disabled={loading}
+                              aria-label="Delete task"
                             >
-                              <BsFillTrashFill size={18} />
+                              <BsFillTrashFill color={isDark ? '#f44336' : '#d32f2f'} size={18} />
                             </IconButton>
                           </Tooltip>
                         </>
@@ -482,25 +482,27 @@ const TodoList = () => {
           </AnimatePresence>
         </List>
 
-        {/* Confirm delete dialog */}
-        <Dialog open={!!deleteConfirmId} onClose={cancelDelete} aria-labelledby="delete-dialog-title" aria-describedby="delete-dialog-description">
-          <DialogTitle id="delete-dialog-title" color="error">
-            Confirm Delete
-          </DialogTitle>
+        {/* Delete confirmation dialog */}
+        <Dialog
+          open={deleteConfirmId !== null}
+          onClose={cancelDelete}
+          aria-labelledby="delete-confirm-dialog-title"
+          aria-describedby="delete-confirm-dialog-description"
+        >
+          <DialogTitle id="delete-confirm-dialog-title">Confirm Delete</DialogTitle>
           <DialogContent>
-            <DialogContentText id="delete-dialog-description">
+            <DialogContentText id="delete-confirm-dialog-description">
               Are you sure you want to delete this task? This action cannot be undone.
             </DialogContentText>
           </DialogContent>
           <DialogActions>
-            <Button onClick={cancelDelete} disabled={loading} variant="outlined" color="primary">
+            <Button onClick={cancelDelete} color="primary" aria-label="Cancel delete">
               Cancel
             </Button>
             <Button
               onClick={() => deleteTodo(deleteConfirmId)}
-              disabled={loading}
-              variant="contained"
               color="error"
+              aria-label="Confirm delete"
               autoFocus
             >
               Delete
@@ -508,26 +510,25 @@ const TodoList = () => {
           </DialogActions>
         </Dialog>
 
-        {/* Error Snackbar */}
+        {/* Snackbar notifications */}
         <Snackbar
           open={!!error}
-          autoHideDuration={6000}
+          autoHideDuration={4000}
           onClose={() => setError('')}
           anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
         >
-          <Alert severity="error" onClose={() => setError('')} variant="filled" elevation={6}>
+          <Alert severity="error" onClose={() => setError('')} variant="filled" sx={{ width: '100%' }}>
             {error}
           </Alert>
         </Snackbar>
 
-        {/* Success Snackbar */}
         <Snackbar
           open={!!success}
-          autoHideDuration={4000}
+          autoHideDuration={3000}
           onClose={() => setSuccess('')}
           anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
         >
-          <Alert severity="success" onClose={() => setSuccess('')} variant="filled" elevation={6}>
+          <Alert severity="success" onClose={() => setSuccess('')} variant="filled" sx={{ width: '100%' }}>
             {success}
           </Alert>
         </Snackbar>
