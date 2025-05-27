@@ -1,0 +1,2 @@
+in server -> node index.js
+in client -> npm run dev
